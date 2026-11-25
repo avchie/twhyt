@@ -2472,6 +2472,12 @@ html[data-theme="dark"] #analytics .day .day-edit-pencil:hover,html[data-theme="
 #analytics .calendar-controls #journalSettingsToggle{width:34px!important;min-width:34px!important;height:34px!important;min-height:34px!important;flex:0 0 34px!important;}
 #analytics .calendar-controls #journalSettingsToggle .journal-cog-icon{width:19px!important;height:19px!important;min-width:19px!important;min-height:19px!important;}
 </style>
+<style>
+/* Keep long journal notes inside their own scrolling areas. */
+#analytics #dayNotesText{max-height:144px;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-gutter:stable;padding-right:8px;white-space:pre-wrap;overflow-wrap:anywhere;}
+#tradeModal #dailyNotesInput{height:210px;min-height:0;max-height:210px;resize:none;overflow-y:auto;overscroll-behavior:contain;}
+html[data-theme="dark"] #dayNotesText,html[data-theme="dark"] #dailyNotesInput{color-scheme:dark;}
+</style>
 </head>
 <body>
 <div aria-label="Desktop-only notice" id="twhyt-desktop-only" role="status">
@@ -2518,7 +2524,7 @@ html[data-theme="dark"] #analytics .day .day-edit-pencil:hover,html[data-theme="
 </div>
 </div>
 </div></div><div class="calscroll calendar-stage" id="calendarStage"><div class="cal" id="calGrid"></div><div class="year-grid" id="yearGrid"></div></div></div><aside class="side"><div class="mtotal"><label id="periodTotalLabel">Monthly total</label><strong id="monthPnl">$0</strong><span><b id="monthDays">0</b> <span id="periodDaysLabel">days traded</span></span></div><div class="selected" id="daySummary"><div class="date" id="selectedDate">Select a trading day</div><h3 id="selectedPnl">$0</h3><div class="slist"><div><span>Trades</span><b id="sTrades">—</b></div><div><span>Win rate</span><b id="sWin">—</b></div><div><span>Average winner</span><b id="sAvgWin">—</b></div><div><span>Average loser</span><b id="sAvgLoss">—</b></div></div>
-<div class="day-notes" id="dayNotesDisplay" style="display:none"><div class="day-notes-label">Notes</div><div class="day-notes-text" id="dayNotesText"></div></div>
+<div class="day-notes" id="dayNotesDisplay" style="display:none"><div class="day-notes-label">Notes</div><div class="day-notes-text" id="dayNotesText" tabindex="0" aria-label="Daily notes"></div></div>
 </div></aside></div>
 <section class="log"><div class="loghead"><h2>Recent trades</h2><span id="tradeCountLabel"></span></div><div class="trade-table-shell"><table class="recent-trades-table"><colgroup><col style="width:16%"/><col style="width:15%"/><col style="width:11%"/><col style="width:13%"/><col style="width:13%"/><col style="width:13%"/><col style="width:19%"/></colgroup><thead><tr><th>Date</th><th>Symbol</th><th>Side</th><th>Entry</th><th>Exit</th><th>Size</th><th>Net P&amp;L</th></tr></thead><tbody id="tradeRows"></tbody></table></div></section>
 </div></section>
@@ -2694,7 +2700,7 @@ function closeJournalSettings(){toggleJournalSettings(false)}
 document.addEventListener('click',e=>{if(!e.target.closest('#journalSettings'))closeJournalSettings()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeJournalSettings()});
 function clearAllTradeData(){
-  showSitePrompt('This will permanently delete all trading journal data. Type CONFIRM to continue',performClearAllTradeData,{title:'Clear all data?',confirmLabel:'Clear data'});
+  showSitePrompt('This will permanently delete all trades and daily notes. Type CONFIRM to continue',performClearAllTradeData,{title:'Clear all data?',confirmLabel:'Clear data'});
   const message=document.getElementById('sitePromptMessage');
   const verify=document.createElement('div');
   verify.className='clear-data-verification';
@@ -2709,7 +2715,11 @@ function clearAllTradeData(){
 function performClearAllTradeData(){
   trades=[];
   try{localStorage.removeItem(TRADE_STORAGE_KEY)}catch(err){console.warn("Could not clear locally saved trading journal trades.",err)}
-  selectedDayKey=null;
+  dayNotes={};
+  try{localStorage.removeItem(DAY_NOTES_STORAGE_KEY)}catch(err){console.warn("Could not clear locally saved journal notes.",err)}
+  dailyNotesInput.value="";
+  dailyNotesSaved.textContent="";
+  resetSelectedDay();
   refresh();
 }
 
@@ -2949,6 +2959,7 @@ function renderDayNote(){
   }
   const note=dayNotes[selectedDayKey]||"";
   dayNotesText.textContent=note;
+  dayNotesText.scrollTop=0;
   dayNotesDisplay.style.display=note?"block":"none";
 }
 function saveCurrentDayNote(){
