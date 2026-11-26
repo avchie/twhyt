@@ -2709,7 +2709,22 @@ function moveEconDay(offset){econOffset=Math.max(0,Math.min(econMaxOffset(),offs
 document.getElementById('econPrev').addEventListener('click',()=>moveEconDay(econOffset-1));
 document.getElementById('econNext').addEventListener('click',()=>moveEconDay(econOffset+1));
 
-document.getElementById('economicFilterPanel').addEventListener('change',renderEcon);
+// Persist calendar checkbox preferences independently of calendar data.
+function restoreCalendarFilters(panelId, render){
+ const panel=document.getElementById(panelId);
+ const boxes=Array.from(panel.querySelectorAll('input[type="checkbox"]'));
+ const key='twhyt-calendar-filters-v1:'+panelId;
+ const boxKey=box=>box.name+':'+box.value;
+ try{
+  const saved=JSON.parse(localStorage.getItem(key)||'null');
+  if(saved&&typeof saved==='object')boxes.forEach(box=>{if(typeof saved[boxKey(box)]==='boolean')box.checked=saved[boxKey(box)];});
+ }catch(e){}
+ panel.addEventListener('change',()=>{
+  try{localStorage.setItem(key,JSON.stringify(Object.fromEntries(boxes.map(box=>[boxKey(box),box.checked]))));}catch(e){}
+  render();
+ });
+}
+restoreCalendarFilters('economicFilterPanel',renderEcon);
 document.addEventListener('twhyt:view-changed',e=>{if(e.detail.id==='terminal')refreshEcon();});
 document.addEventListener('visibilitychange',refreshEcon);
 setInterval(()=>{if(econRenderedDay!==econDay(new Date()))renderEcon();refreshEcon();},30000);renderEcon();refreshEcon();
@@ -2746,7 +2761,7 @@ async function refreshEarnings(){
 }
 for(const [id,delta] of [['earnPrev',-1],['earnNext',1]])document.getElementById(id).addEventListener('click',()=>{earnOffset=Math.max(-1,Math.min(30,earnOffset+delta));renderEarningsCalendar();document.getElementById('earnRows').parentElement.scrollTop=0;refreshEarnings();});
 document.addEventListener('twhyt:view-changed',e=>{if(e.detail.id==='terminal')refreshEarnings();});document.addEventListener('visibilitychange',refreshEarnings);setInterval(refreshEarnings,60000);refreshEarnings();
-document.getElementById('earningsFilterPanel').addEventListener('change',renderEarningsCalendar);
+restoreCalendarFilters('earningsFilterPanel',renderEarningsCalendar);
 function toggleCalendarFilters(panelId,button){const panel=document.getElementById(panelId);if(!panel)return;const opening=panel.hidden;document.querySelectorAll('#terminal .calendar-filter-panel').forEach(p=>{p.hidden=true});document.querySelectorAll('#terminal .calendar-filter-btn').forEach(b=>b.setAttribute('aria-expanded','false'));panel.hidden=!opening;button.setAttribute('aria-expanded',String(opening));}
 document.addEventListener('click',function(event){if(event.target.closest('#terminal .calendar-filter-panel, #terminal .calendar-filter-btn'))return;document.querySelectorAll('#terminal .calendar-filter-panel').forEach(p=>p.hidden=true);document.querySelectorAll('#terminal .calendar-filter-btn').forEach(b=>b.setAttribute('aria-expanded','false'));});
 document.addEventListener('keydown',function(event){if(event.key!=='Escape')return;document.querySelectorAll('#terminal .calendar-filter-panel').forEach(p=>p.hidden=true);document.querySelectorAll('#terminal .calendar-filter-btn').forEach(b=>b.setAttribute('aria-expanded','false'));});
